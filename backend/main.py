@@ -16,10 +16,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Load Models
-MODEL_PATH = "ai_model/shortage_model.pkl"
-VEC_PATH = "ai_model/vectorizer.pkl"
-DATA_PATH = "data/training_data.csv"
+# Resolve paths correctly regardless of where uvicorn is run from
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MODEL_PATH = os.path.join(BASE_DIR, "ai_model", "shortage_model.pkl")
+VEC_PATH = os.path.join(BASE_DIR, "ai_model", "vectorizer.pkl")
+DATA_PATH = os.path.join(BASE_DIR, "data", "training_data.csv")
 
 model = None
 vectorizer = None
@@ -30,7 +31,7 @@ if os.path.exists(MODEL_PATH) and os.path.exists(VEC_PATH):
     with open(VEC_PATH, "rb") as f:
         vectorizer = pickle.load(f)
 else:
-    print("Warning: Model files not found. Ensure train.py has been run.")
+    print(f"Warning: Model files not found at {MODEL_PATH}. Ensure train.py has been run.")
 
 class PredictionRequest(BaseModel):
     termination_reason: str
@@ -45,11 +46,9 @@ def predict_shortage(request: PredictionRequest):
         raise HTTPException(status_code=500, detail="Model not loaded.")
         
     reason = request.termination_reason
-    # Transform text to features
     features = vectorizer.transform([reason]).toarray()
     
-    # Predict
-    prob = model.predict_proba(features)[0][1] # Probability of shortage (class 1)
+    prob = model.predict_proba(features)[0][1]
     prediction = int(model.predict(features)[0])
     
     return {
@@ -64,10 +63,7 @@ def get_historical_data(limit: int = 50):
         raise HTTPException(status_code=404, detail="Data not found.")
         
     df = pd.read_csv(DATA_PATH)
-    # Convert NaN to string to avoid JSON errors
     df = df.fillna("Unknown")
-    
-    # Sort or format if needed. Returning raw dict for now.
     records = df.head(limit).to_dict(orient="records")
     return {"data": records}
 

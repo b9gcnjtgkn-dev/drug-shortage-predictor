@@ -1,11 +1,11 @@
-# APMGM_GroupXX — Drug Shortage Prediction Using Clinical Trial Termination Signals
+# APMGM — Drug Shortage Prediction Using Clinical Trial Termination Signals
 
 ---
 
 ## PROJECT METADATA
 * **Programme:** Advanced Programme in Management (APMGM)
 * **Case Title:** Can Clinical Trial Termination Signals Predict FDA Injectable Drug Shortage Onset 3–18 Months in Advance, Before Shortages Become Operationally Visible?
-* **Group Members:** [Insert All Group Member Names]
+* **Project Author & Solo Developer:** Abhay Rohilla (Individual Submission under Group Project Track)
 * **Submission Date:** July 2026
 * **Faculty Mentor:** [Insert Mentor Name]
 * **Target Word Count:** ~6,000 words (Equivalent to 14 pages in Times New Roman, Size 12, 1.5 Line Spacing, 2.54 cm margins)
@@ -420,7 +420,7 @@ From a Product Management perspective, the Drug Shortage Early Warning Radar res
 
 ### 17.2 Recommendations for Next Steps
 To prepare this submission for final evaluation and position it as an industry-leading portfolio piece, the following actions are recommended:
-1. **Submit the Word Document:** Copy this comprehensive report, format it with Times New Roman (Size 12, 1.5 line spacing, 2.54 cm margins), fill in your group metadata, and name the file `APMGM_GroupXX_Drug Shortage Prediction Using Clinical Trial Termination Signals`.
+1. **Submit the Word Document:** Copy this comprehensive report, format it with Times New Roman (Size 12, 1.5 line spacing, 2.54 cm margins), confirm your individual metadata, and name the file `APMGM_Individual_Submission_Abhay_Rohilla_Drug_Shortage_Prediction_Using_Clinical_Trial_Termination_Signals.docx`.
 2. **Share the Repository:** Provide the GitHub link (https://github.com/b9gcnjtgkn-dev/drug-shortage-predictor) to show the evaluators that you didn't just write a strategic paper — you built a working Next.js and FastAPI application to prove the concept.
 3. **Pilot the Model:** In your presentation, emphasize the origin of this concept from your personal internship experiences, establishing the authenticity of your product vision.
 

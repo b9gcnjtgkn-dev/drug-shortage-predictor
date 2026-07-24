@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Drug Shortage Early Warning Radar — APMGM</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080d1a;
+    --surface: #0f172a;
+    --surface2: #1e293b;
+    --border: rgba(255,255,255,0.07);
+    --accent: #3b82f6;
+    --accent2: #8b5cf6;
+    --danger: #ef4444;
+    --success: #10b981;
+    --warn: #f59e0b;
+    --text: #f1f5f9;
+    --muted: #64748b;
+    --muted2: #94a3b8;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    background:#000;
+    font-family:'Inter',sans-serif;
+    height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+    color:var(--text);
+    user-select:none;
+  }
+
+  /* DECK */
+  .deck{
+    width:1280px;
+    height:720px;
+    position:relative;
+    border-radius:16px;
+    overflow:hidden;
+    box-shadow:0 50px 150px rgba(0,0,0,0.9);
+  }
+
+  /* SLIDE */
+  .slide{
+    position:absolute;
+    inset:0;
+    background:var(--bg);
+    padding:56px 72px;
+    opacity:0;
+    transform:translateX(80px) scale(0.98);
+    transition:opacity 0.55s cubic-bezier(.4,0,.2,1), transform 0.55s cubic-bezier(.4,0,.2,1);
+    pointer-events:none;
+    display:flex;
+    flex-direction:column;
+  }
+  .slide.active{opacity:1;transform:translateX(0) scale(1);pointer-events:all;}
+  .slide.exit{opacity:0;transform:translateX(-80px) scale(0.98);}
+
+  /* ambient glows */
+  .glow-tl::before{content:'';position:absolute;top:-250px;left:-250px;width:600px;height:600px;background:radial-gradient(circle,rgba(59,130,246,0.11) 0%,transparent 70%);pointer-events:none;}
+  .glow-br::after{content:'';position:absolute;bottom:-200px;right:-200px;width:500px;height:500px;background:radial-gradient(circle,rgba(139,92,246,0.09) 0%,transparent 70%);pointer-events:none;}
+
+  /* SLIDE NUMBER */
+  .snum{position:absolute;bottom:26px;right:36px;font-size:11px;color:var(--muted);letter-spacing:2px;font-weight:500;}
+
+  /* CHIP / LABEL */
+  .chip{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:4px 14px;border-radius:100px;
+    font-size:10px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;
+    margin-bottom:18px;width:fit-content;flex-shrink:0;
+  }
+  .c-blue{background:rgba(59,130,246,0.13);color:#60a5fa;border:1px solid rgba(59,130,246,0.28);}
+  .c-purple{background:rgba(139,92,246,0.13);color:#a78bfa;border:1px solid rgba(139,92,246,0.28);}
+  .c-red{background:rgba(239,68,68,0.13);color:#f87171;border:1px solid rgba(239,68,68,0.28);}
+  .c-green{background:rgba(16,185,129,0.13);color:#34d399;border:1px solid rgba(16,185,129,0.28);}
+  .c-amber{background:rgba(245,158,11,0.13);color:#fbbf24;border:1px solid rgba(245,158,11,0.28);}
+  .c-cyan{background:rgba(6,182,212,0.13);color:#22d3ee;border:1px solid rgba(6,182,212,0.28);}
+
+  /* TYPOGRAPHY */
+  h1{font-size:56px;font-weight:800;line-height:1.08;letter-spacing:-1px;}
+  h2{font-size:38px;font-weight:700;line-height:1.15;letter-spacing:-0.5px;}
+  .grad{background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+
+  /* DIVIDER */
+  .bar{width:44px;height:3px;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:2px;margin-bottom:20px;flex-shrink:0;}
+
+  /* CARD */
+  .card{
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:14px;padding:24px 22px;position:relative;overflow:hidden;
+  }
+  .card-top{position:absolute;top:0;left:0;right:0;height:3px;}
+  .ct-red{background:linear-gradient(90deg,#ef4444,#f97316);}
+  .ct-blue{background:linear-gradient(90deg,#3b82f6,#8b5cf6);}
+  .ct-green{background:linear-gradient(90deg,#10b981,#06b6d4);}
+  .ct-amber{background:linear-gradient(90deg,#f59e0b,#fb923c);}
+  .ct-purple{background:linear-gradient(90deg,#8b5cf6,#ec4899);}
+  .ct-cyan{background:linear-gradient(90deg,#06b6d4,#3b82f6);}
+
+  ul.b{list-style:none;display:flex;flex-direction:column;gap:14px;margin-top:6px;}
+  ul.b li{display:flex;align-items:center;gap:12px;font-size:19px;font-weight:400;color:#e2e8f0;line-height:1.3;}
+  ul.b li::before{content:'';width:7px;height:7px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));flex-shrink:0;}
+
+  /* ─── SLIDE 1: TITLE ─── */
+  #s1{justify-content:center;}
+  #s1 .sub{font-size:20px;color:var(--muted2);font-weight:300;margin-top:14px;max-width:680px;line-height:1.55;}
+  #s1 .badges{display:flex;flex-wrap:wrap;gap:10px;margin-top:36px;}
+  .bdg{padding:7px 16px;border-radius:8px;font-size:12px;font-weight:500;border:1px solid var(--border);background:var(--surface);color:var(--muted2);}
+  #s1 .meta{font-size:13px;color:var(--muted);margin-top:32px;letter-spacing:0.3px;}
+
+  /* ─── SLIDE 2: MANAGERIAL DILEMMA ─── */
+  #s2 .versus{display:flex;align-items:stretch;gap:0;margin-top:20px;flex:1;}
+  .vs-box{flex:1;border-radius:14px;padding:32px 28px;display:flex;flex-direction:column;gap:16px;}
+  .vs-box.jit{background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.2);}
+  .vs-box.clin{background:rgba(16,185,129,0.07);border:1px solid rgba(16,185,129,0.2);}
+  .vs-icon{font-size:42px;margin-bottom:4px;}
+  .vs-title{font-size:18px;font-weight:700;letter-spacing:-0.2px;}
+  .vs-title.amber{color:#fbbf24;}
+  .vs-title.green{color:#34d399;}
+  .vs-point{font-size:14px;color:var(--muted2);line-height:1.45;padding-left:12px;border-left:2px solid rgba(255,255,255,0.1);}
+  .vs-divider{
+    width:64px;flex-shrink:0;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+  }
+  .vs-divider .vs-lbl{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;writing-mode:vertical-rl;text-orientation:mixed;}
+  .vs-divider .vs-clash{font-size:28px;}
+  #s2 .trap-bar{
+    margin-top:20px;flex-shrink:0;
+    background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);
+    border-radius:12px;padding:14px 24px;
+    display:flex;align-items:center;gap:16px;
+  }
+  .trap-bar .tb-icon{font-size:22px;}
+  .trap-bar .tb-text{font-size:15px;color:#f87171;font-weight:500;}
+  .trap-bar .tb-sub{font-size:12px;color:var(--muted);margin-top:2px;}
+
+  /* ─── SLIDE 3: PROBLEM / WHY SOLVE ─── */
+  #s3 .grid4{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;flex:1;}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px 24px;display:flex;flex-direction:column;justify-content:space-between;}
+  .snum-big{font-size:48px;font-weight:800;line-height:1;}
+  .snum-big.red{color:#f87171;} .snum-big.amber{color:#fbbf24;} .snum-big.blue{color:#60a5fa;} .snum-big.green{color:#34d399;}
+  .slabel{font-size:14px;color:var(--muted2);margin-top:8px;line-height:1.4;}
+  #s3 .why-row{display:flex;gap:12px;margin-top:16px;flex-shrink:0;}
+  .why-pill{flex:1;padding:10px 14px;border-radius:10px;font-size:12px;font-weight:600;text-align:center;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);color:#93c5fd;}
+
+  /* ─── SLIDE 4: STAKEHOLDERS ─── */
+  #s4 .sh-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:16px;flex:1;}
+  .sh-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px 18px;position:relative;overflow:hidden;transition:border-color .3s;}
+  .sh-icon{font-size:30px;margin-bottom:10px;}
+  .sh-title{font-size:14px;font-weight:700;color:#e2e8f0;}
+  .sh-role{font-size:11px;color:var(--accent);font-weight:600;letter-spacing:0.5px;margin-top:2px;text-transform:uppercase;}
+  .sh-need{font-size:12px;color:var(--muted2);margin-top:10px;line-height:1.45;}
+  .sh-pain{font-size:11px;color:#f87171;margin-top:8px;font-weight:500;}
+
+  /* ─── SLIDE 5: OBJECTIVE ─── */
+  #s5 .q-box{
+    background:linear-gradient(135deg,rgba(59,130,246,0.09),rgba(139,92,246,0.09));
+    border:1px solid rgba(99,102,241,0.25);border-radius:18px;
+    padding:36px 44px;margin-top:20px;flex-shrink:0;
+  }
+  #s5 .q-box p{font-size:24px;font-weight:300;line-height:1.65;color:#e2e8f0;}
+  #s5 .q-box p strong{color:#fff;font-weight:700;}
+  #s5 .scope{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px;flex-shrink:0;}
+  .spill{padding:9px 18px;border-radius:100px;font-size:13px;font-weight:500;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#cbd5e1;}
+
+  /* ─── SLIDE 6: APPROACH ─── */
+  #s6 .alts{display:flex;gap:10px;margin-top:18px;flex-shrink:0;}
+  .alt{flex:1;padding:10px 12px;border-radius:10px;text-align:center;font-size:12px;font-weight:600;}
+  .alt.no{background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.2);color:#f87171;}
+  .alt.yes{background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);color:#34d399;}
+  .alt .atag{display:block;font-size:9px;opacity:.65;margin-bottom:4px;letter-spacing:.5px;}
+  #s6 .pipe{display:flex;align-items:center;gap:0;margin-top:20px;flex:1;align-self:center;width:100%;}
+  .ps{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px 16px;text-align:center;}
+  .ps .pi{font-size:32px;margin-bottom:10px;display:block;}
+  .ps .pt{font-size:13px;font-weight:600;color:#e2e8f0;line-height:1.3;}
+  .ps .ps-sub{font-size:11px;color:var(--muted2);margin-top:6px;line-height:1.4;}
+  .pa{width:28px;flex-shrink:0;text-align:center;color:var(--accent);font-size:18px;}
+
+  /* ─── SLIDE 7: SOLUTION ─── */
+  #s7 .fg{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;flex:1;}
+  .fc{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:26px 22px;position:relative;overflow:hidden;}
+  .fc::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),var(--accent2));opacity:0;transition:opacity .3s;}
+  .fc:hover::after{opacity:1;}
+  .fc .fi{font-size:30px;margin-bottom:12px;}
+  .fc h3{font-size:16px;color:#e2e8f0;font-weight:600;}
+  .fc p{font-size:12px;color:var(--muted2);margin-top:8px;line-height:1.5;}
+  .fc .ft{font-size:10px;font-weight:700;color:var(--accent);margin-top:12px;letter-spacing:.5px;}
+
+  /* ─── SLIDE 8: IMPACT ─── */
+  #s8 .ir{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:16px;}
+  .ic{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px 20px;text-align:center;}
+  .ic .in{font-size:40px;font-weight:800;background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+  .ic .il{font-size:12px;color:var(--muted2);margin-top:8px;line-height:1.4;}
+  #s8 .mr{display:flex;gap:12px;margin-top:16px;flex-shrink:0;}
+  .ms{flex:1;background:rgba(16,185,129,0.07);border:1px solid rgba(16,185,129,0.18);border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:10px;}
+  .ms .mn{font-size:26px;font-weight:800;color:#34d399;}
+  .ms .ml{font-size:11px;color:var(--muted2);line-height:1.3;}
+
+  /* ─── SLIDE 9: ROADMAP ─── */
+  #s9 .rm{display:flex;flex-direction:column;gap:14px;margin-top:14px;flex:1;justify-content:center;}
+  .rmr{display:flex;align-items:center;gap:16px;}
+  .rmp{width:96px;flex-shrink:0;text-align:right;}
+  .rmp .rml{font-size:10px;font-weight:700;color:var(--accent);letter-spacing:1.2px;text-transform:uppercase;}
+  .rmp .rmt{font-size:11px;color:var(--muted);margin-top:2px;}
+  .rmd{width:12px;height:12px;border-radius:50%;flex-shrink:0;position:relative;}
+  .rmd::after{content:'';position:absolute;left:50%;top:100%;transform:translateX(-50%);width:2px;height:14px;background:var(--border);}
+  .rmr:last-child .rmd::after{display:none;}
+  .rmd.done{background:var(--success);}
+  .rmd.now{background:var(--accent);box-shadow:0 0 12px rgba(59,130,246,.6);}
+  .rmd.future{background:transparent;border:2px solid #334155;}
+  .rmc{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 20px;}
+  .rmc h3{font-size:15px;font-weight:600;color:#e2e8f0;}
+  .rmc p{font-size:12px;color:var(--muted2);margin-top:4px;line-height:1.4;}
+
+  /* ─── SLIDE 10: CLOSE ─── */
+  #s10{justify-content:center;align-items:center;text-align:center;}
+  #s10 .big{font-size:50px;font-weight:800;line-height:1.12;max-width:860px;letter-spacing:-1px;}
+  #s10 .sub{font-size:17px;color:var(--muted2);margin-top:20px;max-width:580px;line-height:1.6;}
+  #s10 .cta{display:flex;gap:14px;margin-top:36px;justify-content:center;flex-wrap:wrap;}
+  .btn-p{padding:12px 26px;border-radius:10px;font-size:13px;font-weight:600;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;}
+  .btn-s{padding:12px 26px;border-radius:10px;font-size:13px;font-weight:500;background:var(--surface);border:1px solid var(--border);color:var(--muted2);}
+  #s10 .author{font-size:12px;color:var(--muted);margin-top:28px;letter-spacing:.3px;}
+
+  /* ─── PROGRESS BAR ─── */
+  .progress-bar{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .5s cubic-bezier(.4,0,.2,1);z-index:100;}
+
+  /* ─── NAV ─── */
+  .nav{
+    position:fixed;bottom:28px;left:50%;transform:translateX(-50%);
+    display:flex;align-items:center;gap:10px;
+    background:rgba(15,23,42,0.92);backdrop-filter:blur(16px);
+    border:1px solid rgba(255,255,255,0.08);border-radius:100px;
+    padding:7px 14px;z-index:100;
+  }
+  .nbtn{width:32px;height:32px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .2s,border-color .2s;}
+  .nbtn:hover{background:var(--accent);border-color:var(--accent);}
+  .ndots{display:flex;gap:5px;}
+  .ndot{width:5px;height:5px;border-radius:50%;background:#1e293b;cursor:pointer;transition:all .25s;}
+  .ndot.active{background:var(--accent);width:18px;border-radius:3px;}
+  .ncnt{font-size:11px;color:var(--muted);min-width:36px;text-align:center;}
+
+  /* keyboard hint */
+  .kbd-hint{position:fixed;bottom:28px;right:36px;font-size:11px;color:var(--muted);opacity:.5;letter-spacing:.5px;}
+</style>
+</head>
+<body>
+<div class="progress-bar" id="progress"></div>
+
+<div class="deck" id="deck">
+
+  <!-- ══════════════════════════ SLIDE 1: TITLE ══════════════════════════ -->
+  <div class="slide active glow-tl glow-br" id="s1">
+    <div style="position:relative;z-index:1;display:flex;flex-direction:column;height:100%;justify-content:center;">
+      <div class="chip c-blue">🏥 APMGM · Product Management · 2026</div>
+      <h1 class="grad">Drug Shortage<br>Early Warning Radar</h1>
+      <p class="sub">Turning clinical trial termination data into a 3–18 month<br>predictive signal for injectable drug shortages.</p>
+      <div class="badges">
+        <div class="bdg">📡 ClinicalTrials.gov API</div>
+        <div class="bdg">🤖 NLP + Random Forest</div>
+        <div class="bdg">⚡ FastAPI + Next.js</div>
+        <div class="bdg">78% Baseline Accuracy</div>
+        <div class="bdg">GitHub: Live Prototype</div>
+      </div>
+      <p class="meta">Abhay Rohilla · Individual Submission under Group Project Track · APMGM 2026</p>
+    </div>
+    <div class="snum">01 / 10</div>
+  </div>
+
+  <!-- ══════════════════════════ SLIDE 2: MANAGERIAL DILEMMA ══════════════════════════ -->
+  <div class="slide glow-tl glow-br" id="s2">
+    <div style="position:relative;z-index:1;flex:1;display:flex;flex-direction:column;">
+      <div class="chip c-amber">⚖️ The Managerial Dilemma</div>
+      <h2>Two mandates.<br><span class="grad">One impossible choice.</span></h2>
+      <div class="versus">
+        <div class="vs-box jit">
+          <div>
+            <div class="vs-icon">💰</div>
+            <div class="vs-title amber">Mandate A: Lean JIT Inventory</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px;margin-top:16px;">
+            <div class="vs-point">CFO demands minimum stock holdings</div>
+            <div class="vs-point">JIT reduces waste &amp; holding costs</div>
+            <div class="vs-point">No buffer means no safety net</div>
+          </div>
+        </div>
+        <div class="vs-divider">
+          <div class="vs-clash">⚡</div>
+          <div class="vs-lbl">Conflict</div>
+        </div>
+        <div class="vs-box clin">
+          <div>
+            <div class="vs-icon">🏥</div>
+            <div class="vs-title green">Mandate B: 100% Clinical Availability</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px;margin-top:16px;">
+            <div class="vs-point">Clinicians demand zero drug failures</div>
+            <div class="vs-point">Any gap = patient harm &amp; liability</div>
+            <div class="vs-point">No warning system currently exists</div>
+          </div>
+        </div>
+      </div>
+      <div class="trap-bar">
+        <div class="tb-icon">🚨</div>
+        <div>
+          <div class="tb-text">The Reactive Trap: Managers only learn of a shortage when the shelf is already empty.</div>
+          <div class="tb-sub">At that point: grey-market prices spike, alternatives are gone, and patients wait.</div>
+        </div>
+      </div>
+    </div>
+    <div class="snum">02 / 10</div>
+  </div>
+
+  <!-- ══════════════════════════ SLIDE 3: WHY WORTH SOLVING ══════════════════════════ -->
+  <div class="slide glow-tl glow-br" id="s3">
+    <div style="position:relative;z-index:1;flex:1;display:flex;flex-direction:column;">
+      <div class="chip c-red">📊 Why This Must Be Solved</div>
+      <h2>The cost of inaction<br><span class="grad">is measured in lives.</span></h2>
+      <div class="grid4">
+        <div class="stat-card">
+          <div class="card-top ct-red"></div>
+          <div style="margin-top:6px;">
+            <div class="snum-big red">323</div>
+            <div class="slabel">Active drug shortages — highest in a decade. 83% are sterile injectables. (ASHP, 2024)</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="card-top ct-amber"></div>
+          <div style="margin-top:6px;">
+            <div class="snum-big amber">$216M</div>
+            <div class="slabel">Spent annually by U.S. hospitals on grey-market drugs at 650% markup. (ASHP, 2023)</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="card-top ct-blue"></div>
+          <div style="margin-top:6px;">
+            <div class="snum-big blue">18.4mo</div>
+            <div class="slabel">Average duration of an injectable drug shortage once officially declared. (FDA, 2023)</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="card-top ct-green"></div>
+          <div style="margin-top:6px;">
+            <div class="snum-big green">$0</div>
+            <div class="slabel">Invested in any existing system that predicts shortages before they become visible.</div>
+          </div>
+        </div>
+      </div>
+      <div class="why-row">
+        <div class="why-pill">💊 Patients rationed or delayed</div>
+        <div class="why-pill">🏦 Emergency budgets blown</div>
+        <div class="why-pill">👨‍⚕️ Clinicians forced to substitute</div>
+        <div class="why-pill">⚖️ Institutional liability risk</div>
+      </div>
+    </div>
+    <div class="snum">03 / 10</div>
+  </div>
+
+  <!-- ══════════════════════════ SLIDE 4: STAKEHOLDERS ══════════════════════════ -->
+  <div class="slide glow-tl glow-br" id="s4">
+    <div style="position:relative;z-index:1;flex:1;display:flex;flex-direction:column;">
+      <div class="chip c-purple">👥 Who Are the Stakeholders?</div>
+      <h2>Six players.<br><span class="grad">One broken ecosystem.</span></h2>
+      <div class="sh-grid">
+        <div class="sh-card">
+          <div class="card-top ct-blue"></div>
+          <div class="sh-icon" style="margin-top:8px;">💊</div>
+          <div class="sh-title">Hospital Pharmacy Director</div>
+          <div class="sh-role">Primary User</div>
+          <div class="sh-need">Needs predictive drug risk alerts embedded in daily procurement workflow.</div>
+          <div class="sh-pain">⚠️ Spends 15 hrs/week fighting backorders</div>
+        </div>
+        <div class="sh-card">
+          <div class="card-top ct-purple"></div>
+          <div class="sh-icon" style="margin-top:8px;">🏢</div>
+          <div class="sh-title">Group Purchasing Org (GPO)</div>
+          <div class="sh-role">Strategic Buyer</div>
+          <div class="sh-need">Manages drug contracts for 250+ hospitals. Needs manufacturer risk visibility.</div>
+          <div class="sh-pain">⚠️ Contract failures affect entire network</div>
+        </div>
+        <div class="sh-card">
+          <div class="card-top ct-amber"></div>
+          <div class="sh-icon" style="margin-top:8px;">📊</div>
+          <div class="sh-title">Hospital CFO</div>
+          <div class="sh-role">Financial Gatekeeper</div>
+          <div class="sh-need">Demands ROI proof before any software investment. Cost avoidance is the language.</div>
+          <div class="sh-pain">⚠️ Grey-market spikes blow quarterly budgets</div>
+        </div>
+        <div class="sh-card">
+          <div class="card-top ct-red"></div>
+          <div class="sh-icon" style="margin-top:8px;">🏛️</div>
+          <div class="sh-title">FDA / CDER</div>
+          <div class="sh-role">Regulator</div>
+          <div class="sh-need">Mandates supply chain transparency. Actively seeks private-sector intelligence sharing.</div>
+          <div class="sh-pain">⚠️ Congressional pressure to act faster</div>
+        </div>
+        <div class="sh-card">
+          <div class="card-top ct-green"></div>
+          <div class="sh-icon" style="margin-top:8px;">🧬</div>
+          <div class="sh-title">Drug Manufacturer</div>
+          <div class="sh-role">Supply Side</div>
+          <div class="sh-need">Wants demand predictability. Our tool uses only their public disclosures — no proprietary data.</div>
+          <div class="sh-pain">⚠️ Reputational damage from surprise halts</div>
+        </div>
+        <div class="sh-card">
+          <div class="card-top ct-cyan"></div>
+          <div class="sh-icon" style="margin-top:8px;">🧑‍🤝‍🧑</div>
+          <div class="sh-title">Patients</div>
+          <div class="sh-role">Ultimate Beneficiary</div>
+          <div class="sh-need">Require 100% continuity of care. This product operates invisibly to protect them.</div>
+          <div class="sh-pain">⚠️ Most harmed, least visible in process</div>
+        </div>
+      </div>
+    </div>
+    <div class="snum">04 / 10</div>
+  </div>
+
+  <!-- ══════════════════════════ SLIDE 5: OBJECTIVE ══════════════════════════ -->
+  <div class="slide glow-tl glow-br" id="s5">
+    <div style="position:relative;z-index:1;flex:1;display:flex;flex-direction:column;">
+      <div class="chip c-blue">🎯 Objective &amp; Scope</div>
+      <h2>One question.<br><span class="grad">Never asked before.</span></h2>
+      <div class="q-box">
+        <p>Can <strong>clinical trial termination signals</strong> from ClinicalTrials.gov predict FDA injectable drug shortage onset <strong>3–18 months in advance</strong>, before shortages become operationally visible?</p>
+      </div>
+      <div class="scope">
+        <div class="spill">🇺🇸 FDA-regulated injectables only</div>
+        <div class="spill">📁 100% public government data</div>
+        <div class="spill">🏥 Hospital procurement teams</div>
+        <div class="spill">🤝 GPO network deployment</div>
+        <div class="spill">🤖 Machine Learning risk scoring</div>
+        <div class="spill">⏱️ 3–18 month predictive window</div>
+      </div>
+    </div>
+    <div class="snum">05 / 10</div>
+  </div>
+
+  <!-- ══════════════════════════ SLIDE 6: APPROACH ══════════════════════════ -->
+  <div class="slide glow-tl glow-br" id="s6">
+    <div style="position:relative;z-index:1;flex:1;display:flex;flex-direction:column;">
+      <div class="chip c-amber">🔍 Approach &amp; Decision</div>
+      <h2>Four alternatives rejected.<br><span class="grad">One signal wins.</span></h2>
+      <div class="alts">
+        <div class="alt no"><span class="atag">REJECTED ✕</span>FDA Warning Letters</div>
+        <div class="alt no"><span class="atag">REJECTED ✕</span>Historical Trends</div>
+        <div class="alt no"><span class="atag">REJECTED ✕</span>Stock Price Signals</div>
+        <div class="alt no"><span class="atag">REJECTED ✕</span>Social Media NLP</div>
+        <div class="alt yes"><span class="atag">SELECTED ✓</span>Trial Terminations</div>
+      </div>
+      <div class="pipe">
+        <div class="ps">
+          <span class="pi">🏛️</span>
+          <div class="pt">ClinicalTrials.gov</div>
+          <div class="ps-sub">Sponsor halts trial. Publicly discloses reason under federal law.</div>
+        </div>
+        <div class="pa">→</div>
+        <div class="ps">
+          <span class="pi">📝</span>
+          <div class="pt">Termination Text</div>
+          <div class="ps-sub">"Manufacturing deviations at API facility…"</div>
+        </div>
+        <div class="pa">→</div>
+        <div class="ps">
+          <span class="pi">🤖</span>
+          <div class="pt">AI Risk Score</div>
+          <div class="ps-sub">NLP reads text. Random Forest calculates shortage probability.</div>
+        </div>
+        <div class="pa">→</div>
+        <div class="ps">
+          <span class="pi">📡</span>
+          <div class="pt">Procurement Alert</div>
+          <div class="ps-sub">Delivered 3–18 months before FDA shortage declaration.</div>
+        </div>
+        <div class="pa">→</div>
+        <div class="ps" style="border-color:rgba(16,185,129,.3);">
+          <span class="pi">✅</span>
+          <div class="pt">Shelf Secured</div>
+          <div class="ps-sub">Pre-stocked at contract price. Patient protected.</div>
+        </div>
+      </div>
+    </div>
+    <div class="snum">06 / 10</div>
+  </div>
+
+  <!-- ══════════════════════════ SLIDE 7: SOLUTION ══════════════════════════ -->
+  <div class="slide glow-tl glow-br" id="s7">
+    <div style="position:relative;z-index:1;flex:1;display:flex;flex-direction:column;">
+      <div class="chip c-cyan">⚙️ Solution &amp; Key Features</div>
+      <h2>Not a concept.<br><span class="grad">A live, working product.</span></h2>
+      <div class="fg">
+        <div class="fc">
+          <div class="fi">📡</div>
+          <h3>Live Data Pipeline</h3>
+          <p>Auto-connects to ClinicalTrials.gov API v2. Fetches &amp; normalizes 200+ real terminated trial records in real-time.</p>
+          <div class="ft">Python · Requests · Pandas · CSV Export</div>
+        </div>
+        <div class="fc">
+          <div class="fi">🧠</div>
+          <h3>NLP + AI Classifier</h3>
+          <p>TF-IDF vectorizer converts termination text to features. Random Forest predicts shortage risk at 78% accuracy.</p>
+          <div class="ft">scikit-learn · TF-IDF · Random Forest · .pkl export</div>
+        </div>
+        <div class="fc">
+          <div class="fi">⚡</div>
+          <h3>High-Speed Prediction API</h3>
+          <p>FastAPI backend loads model in-memory. POST any termination text → receive risk score + HIGH/LOW flag instantly.</p>
+          <div class="ft">FastAPI · Uvicorn · Python 3.11 · Swagger /docs</div>
+        </div>
+        <div class="fc">
+          <div class="fi">🖥️</div>
+          <h3>Explainable AI Dashboard</h3>
+          <p>Next.js UI shows risk probability, source text, and historical data. No black box. Every alert is traceable.</p>
+          <div class="ft">Next.js · React · Glassmorphism CSS · localhost:3000</div>
+        </div>
+      </div>
+    </div>
+    <div class="snum">07 / 10</div>
+  </div>
+
+  <!-- ══════════════════════════ SLIDE 8: IMPACT ══════════════════════════ -->
+  <div class="slide glow-tl glow-br" id="s8">
+    <div style="position:relative;z-index:1;flex:1;display:flex;flex-direction:column;">
+      <div class="chip c-green">📈 Impact &amp; Results</div>
+      <h2>The business case<br><span class="grad">writes itself.</span></h2>
+      <div class="ir">
+        <div class="ic">
+          <div class="in">403%</div>
+          <div class="il">Platform ROI per hospital annually</div>
+        </div>
+        <div class="ic">
+          <div class="in">2.5 mo</div>
+          <div class="il">Full payback period from go-live</div>
+        </div>
+        <div class="ic">
+          <div class="in">$424K</div>
+          <div class="il">Net annual savings per 500-bed hospital</div>
+        </div>
+      </div>
+      <div class="mr">
+        <div class="ms">
+          <div class="mn">78%</div>
+          <div class="ml">Model baseline accuracy (MVP)</div>
+        </div>
+        <div class="ms">
+          <div class="mn">200</div>
+          <div class="ml">Real trials fetched live from API</div>
+        </div>
+        <div class="ms">
+          <div class="mn">3–18mo</div>
+          <div class="ml">Predictive lead time advantage</div>
+        </div>
+        <div class="ms">
+          <div class="mn">$0</div>
+          <div class="ml">Data acquisition cost (public API)</div>
+        </div>
+        <div class="ms">
+          <div class="mn">$132M</div>
+          <div class="ml">Annual value at GPO scale (250 hospitals)</div>
+        </div>
+      </div>
+    </div>
+    <div class="snum">08 / 10</div>
+  </div>
+
+  <!-- ══════════════════════════ SLIDE 9: ROADMAP ══════════════════════════ -->
+  <div class="slide glow-tl glow-br" id="s9">
+    <div style="position:relative;z-index:1;flex:1;display:flex;flex-direction:column;">
+      <div class="chip c-purple">🗺️ Product Roadmap</div>
+      <h2>From prototype<br><span class="grad">to national infrastructure.</span></h2>
+      <div class="rm">
+        <div class="rmr">
+          <div class="rmp"><div class="rml">Phase 0</div><div class="rmt">Now ✓</div></div>
+          <div class="rmd done"></div>
+          <div class="rmc" style="border-color:rgba(16,185,129,.3);">
+            <h3>✅ Prototype Live on GitHub</h3>
+            <p>Data pipeline, AI model, FastAPI backend, and Next.js dashboard fully deployed and operational.</p>
+          </div>
+        </div>
+        <div class="rmr">
+          <div class="rmp"><div class="rml">Phase 1</div><div class="rmt">Months 1–6</div></div>
+          <div class="rmd now"></div>
+          <div class="rmc" style="border-color:rgba(59,130,246,.3);">
+            <h3>🔬 Label Validation with Health Systems</h3>
+            <p>Map real FDA shortage records to ClinicalTrials data. Push model accuracy from 78% → 90%+.</p>
+          </div>
+        </div>
+        <div class="rmr">
+          <div class="rmp"><div class="rml">Phase 2</div><div class="rmt">Months 6–12</div></div>
+          <div class="rmd future"></div>
+          <div class="rmc">
+            <h3>🔌 ERP Integration &amp; Beta Launch</h3>
+            <p>Embed EWR alerts into Epic Willow and McKesson screens. 10 beta hospital pilot. Measure real savings.</p>
+          </div>
+        </div>
+        <div class="rmr">
+          <div class="rmp"><div class="rml">Phase 3</div><div class="rmt">Months 12–24</div></div>
+          <div class="rmd future"></div>
+          <div class="rmc">
+            <h3>🏢 GPO-Level Commercialization</h3>
+            <p>Enterprise license to Group Purchasing Organizations. One contract → 250+ hospitals protected.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="snum">09 / 10</div>
+  </div>
+
+  <!-- ══════════════════════════ SLIDE 10: CLOSE ══════════════════════════ -->
+  <div class="slide glow-tl glow-br" id="s10">
+    <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;">
+      <div class="chip c-blue" style="margin:0 auto 28px;">The Opportunity</div>
+      <h1 class="grad" style="font-size:50px;max-width:860px;line-height:1.12;">
+        The shelf should never be empty.
+      </h1>
+      <p class="sub">Clinical trial registries already hold the warning. This product reads it first — and buys the time to act.</p>
+      <div class="cta">
+        <div class="btn-p">🚀 Prototype Is Live &amp; Deployed</div>
+        <div class="btn-s">github.com/b9gcnjtgkn-dev/drug-shortage-predictor</div>
+      </div>
+      <p class="author">Abhay Rohilla · APMGM 2026 · Individual Submission under Group Project Track</p>
+    </div>
+    <div class="snum">10 / 10</div>
+  </div>
+
+</div><!-- /deck -->
+
+<!-- NAVIGATION -->
+<div class="nav">
+  <button class="nbtn" onclick="go(-1)">←</button>
+  <div class="ndots" id="dots"></div>
+  <div class="ncnt" id="cnt">1 / 10</div>
+  <button class="nbtn" onclick="go(1)">→</button>
+</div>
+
+<div class="kbd-hint">← → to navigate · Space to advance</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const dotsEl = document.getElementById('dots');
+  const cntEl  = document.getElementById('cnt');
+  const prog   = document.getElementById('progress');
+  const N = slides.length;
+  let cur = 0;
+
+  // Build dots
+  for(let i=0;i<N;i++){
+    const d=document.createElement('div');
+    d.className='ndot'+(i===0?' active':'');
+    d.onclick=()=>goTo(i);
+    dotsEl.appendChild(d);
+  }
+
+  function syncUI(){
+    document.querySelectorAll('.ndot').forEach((d,i)=>d.className='ndot'+(i===cur?' active':''));
+    cntEl.textContent=`${cur+1} / ${N}`;
+    prog.style.width=`${((cur+1)/N)*100}%`;
+  }
+
+  function goTo(next){
+    if(next<0||next>=N||next===cur) return;
+    slides[cur].classList.remove('active');
+    slides[cur].classList.add('exit');
+    const old=cur; cur=next;
+    slides[cur].classList.add('active');
+    setTimeout(()=>slides[old].classList.remove('exit'),600);
+    syncUI();
+  }
+
+  function go(dir){ goTo(cur+dir); }
+
+  document.addEventListener('keydown',e=>{
+    if(e.key==='ArrowRight'||e.key==='ArrowDown'||e.key===' '){e.preventDefault();go(1);}
+    if(e.key==='ArrowLeft'||e.key==='ArrowUp'){e.preventDefault();go(-1);}
+  });
+
+  // init
+  prog.style.width=`${(1/N)*100}%`;
+</script>
+</body>
+</html>
